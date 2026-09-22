@@ -1,4 +1,5 @@
 import { Competition, Registration, REGISTRATION_STATUS } from '../models/index.js';
+import { availabilityHub } from './availability.js';
 
 /**
  * Low-level seat accounting. Each function is a single atomic MongoDB operation, which
@@ -22,14 +23,16 @@ export async function claimSeat(competitionId, now, { enforceWindow = true } = {
     filter['schedule.registrationClosesAt'] = { $gt: now };
   }
   const res = await Competition.updateOne(filter, { $inc: { 'seats.taken': 1 } });
+  if (res.modifiedCount === 1) availabilityHub.notify(competitionId);
   return res.modifiedCount === 1;
 }
 
 export async function returnSeat(competitionId) {
-  await Competition.updateOne(
+  const res = await Competition.updateOne(
     { _id: competitionId, 'seats.taken': { $gt: 0 } },
     { $inc: { 'seats.taken': -1 } },
   );
+  if (res.modifiedCount === 1) availabilityHub.notify(competitionId);
 }
 
 /**
@@ -75,5 +78,6 @@ export async function releaseExpiredHolds(now, batchSize = 200) {
 export async function reconcileSeats(competitionId) {
   const held = await Registration.countDocuments({ competition: competitionId, seatHeld: true });
   await Competition.updateOne({ _id: competitionId }, { $set: { 'seats.taken': held } });
+  availabilityHub.notify(competitionId);
   return held;
 }

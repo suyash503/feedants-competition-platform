@@ -16,6 +16,7 @@ import {
 } from '../services/competitionService.js';
 import { cancelPendingRegistration, startRegistration } from '../services/registrationService.js';
 import { upsertSubmission } from '../services/submissionService.js';
+import { availabilityHub } from '../services/availability.js';
 
 export const competitionsRouter = Router();
 
@@ -66,6 +67,27 @@ competitionsRouter.get('/:idOrSlug/availability', validate({ params }), async (r
   const competition = await findCompetition(req.params.idOrSlug);
   res.set('Cache-Control', 'no-store');
   res.json(serializeAvailability(competition, clock.now()));
+});
+
+// Live seat counter over Server-Sent Events: a snapshot now, then one on every change.
+const HEARTBEAT_MS = 25_000;
+competitionsRouter.get('/:idOrSlug/live', validate({ params }), async (req, res) => {
+  const competition = await findCompetition(req.params.idOrSlug);
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-store',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no', // keep nginx-style proxies from buffering the stream
+  });
+  const send = (data) => res.write(`event: availability\ndata: ${JSON.stringify(data)}\n\n`);
+  send(serializeAvailability(competition, clock.now()));
+
+  const unsubscribe = availabilityHub.subscribe(competition._id, send);
+  const heartbeat = setInterval(() => res.write(': ping\n\n'), HEARTBEAT_MS);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    unsubscribe();
+  });
 });
 
 competitionsRouter.get('/:idOrSlug/results', validate({ params }), async (req, res) => {

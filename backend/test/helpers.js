@@ -19,13 +19,16 @@ export async function startTestServer(dbName) {
   await Promise.all(Object.values(mongoose.models).map((m) => m.syncIndexes()));
 
   const server = createApp().listen(0);
+  await new Promise((resolve) => server.once('listening', resolve));
   const api = () => request(server);
+  const origin = `http://127.0.0.1:${server.address().port}`;
   const stop = async () => {
     await mongoose.connection.db.dropDatabase();
     await mongoose.disconnect();
+    server.closeAllConnections(); // e.g. SSE streams left open by a failed test
     await new Promise((resolve) => server.close(resolve));
   };
-  return { api, stop };
+  return { api, stop, origin };
 }
 
 export async function resetData() {

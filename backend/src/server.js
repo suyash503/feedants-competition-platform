@@ -29,6 +29,8 @@ async function shutdown(signal) {
     await disconnectDb();
     process.exit(0);
   });
+  // Long-lived SSE streams would keep close() waiting; clients reconnect on their own.
+  setTimeout(() => server.closeAllConnections(), 2_000).unref();
   setTimeout(() => process.exit(1), 10_000).unref();
 }
 process.on('SIGTERM', shutdown);
