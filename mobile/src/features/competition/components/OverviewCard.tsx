@@ -1,5 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Animated, View } from 'react-native';
 import type { CompetitionDetails, Phase, Seats, ViewerState } from '@/api/types';
 import { AppText, Card, Chip, ProgressBar } from '@/components/ui';
 import { useI18n } from '@/i18n';
@@ -19,11 +20,13 @@ type Props = {
   competition: Pick<CompetitionDetails, 'title' | 'category' | 'isMultiWin' | 'certificateForWinners' | 'prizePool' | 'entryFee'>;
   seats: Seats;
   phase: Phase;
+  /** Seat count is being pushed live by the server. */
+  liveConnected?: boolean;
   registrationStatus?: NonNullable<ViewerState['registration']>['status'] | null;
   holdActive?: boolean;
 };
 
-export function OverviewCard({ competition, seats, phase, registrationStatus, holdActive }: Props) {
+export function OverviewCard({ competition, seats, phase, liveConnected, registrationStatus, holdActive }: Props) {
   const { t, pick, lang } = useI18n();
   const category = CATEGORY_LABELS[competition.category] ?? CATEGORY_LABELS.other;
 
@@ -73,15 +76,37 @@ export function OverviewCard({ competition, seats, phase, registrationStatus, ho
         <View style={{ flexGrow: 1, flexBasis: 140, justifyContent: 'center', gap: 8 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Ionicons name="people-outline" size={18} color={spotsColor} />
-            <AppText variant="label" weight="medium" color={spotsColor} numberOfLines={1}>
+            <AppText variant="label" weight="medium" color={spotsColor} numberOfLines={1} style={{ flexShrink: 1 }}>
               {spotsLabel}
             </AppText>
+            {liveConnected && joinable ? <LiveDot /> : null}
           </View>
           <ProgressBar value={seats.taken / seats.total} />
           <AppText variant="caption">{t.booked(seats.taken, seats.total)}</AppText>
         </View>
       </View>
     </Card>
+  );
+}
+
+/** Small pulsing dot: the seat count updates in real time. */
+function LiveDot() {
+  const [opacity] = useState(() => new Animated.Value(1));
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.25, duration: 900, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 900, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+  return (
+    <Animated.View
+      accessibilityLabel="Live"
+      style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success, opacity }}
+    />
   );
 }
 

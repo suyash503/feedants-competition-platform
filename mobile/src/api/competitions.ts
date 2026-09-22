@@ -28,12 +28,15 @@ export function useCompetition(slug: string) {
   });
 }
 
-/** Seats + phase, polled so the "spots left" counter stays live while the screen is open. */
-export function useAvailability(slug: string, enabled = true) {
+/**
+ * Seats + phase. Normally pushed live over SSE (see useLiveAvailability); polling is the
+ * fallback, fast when the stream is down and a slow safety net while it's up.
+ */
+export function useAvailability(slug: string, enabled = true, liveConnected = false) {
   return useQuery({
     queryKey: competitionKeys.availability(slug),
     queryFn: ({ signal }) => api<Availability>(`/competitions/${encodeURIComponent(slug)}/availability`, { signal }),
-    refetchInterval: 10_000,
+    refetchInterval: liveConnected ? 60_000 : 10_000,
     enabled,
   });
 }

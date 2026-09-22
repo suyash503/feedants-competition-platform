@@ -9,6 +9,7 @@ import { ScreenHeader } from '@/components/ScreenHeader';
 import { StateView } from '@/components/ui';
 import { VideoPlayerModal } from '@/components/VideoPlayerModal';
 import { useServerNow } from '@/hooks/useCountdown';
+import { useLiveAvailability } from '@/hooks/useLiveAvailability';
 import { useI18n } from '@/i18n';
 import { useSession } from '@/session/SessionProvider';
 import { colors, spacing } from '@/theme';
@@ -45,7 +46,8 @@ export function CompetitionDetailsScreen({ slug }: { slug: string }) {
   const now = useServerNow();
 
   const details = useCompetition(slug);
-  const availability = useAvailability(slug, details.isSuccess);
+  const liveConnected = useLiveAvailability(slug, details.isSuccess);
+  const availability = useAvailability(slug, details.isSuccess, liveConnected);
   const viewer = useViewerState(slug);
   const session = useSession();
   const [refreshing, setRefreshing] = useState(false);
@@ -126,6 +128,7 @@ export function CompetitionDetailsScreen({ slug }: { slug: string }) {
           competition={competition}
           seats={live.seats}
           phase={live.timeline.phase}
+          liveConnected={liveConnected}
           registrationStatus={registration?.status}
           holdActive={holdActive}
         />
