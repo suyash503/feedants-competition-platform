@@ -25,7 +25,7 @@ const submissionSchema = new Schema(
     status: { type: String, enum: Object.values(SUBMISSION_STATUS), default: SUBMISSION_STATUS.SUBMITTED },
 
     // A user may replace their video until the submission window closes.
-    revision: { type: Number, default: 1, min: 1 },
+    revision: { type: Number, min: 1 }, // set via $inc on every upload, starting at 1
     submittedAt: { type: Date, default: Date.now },
 
     score: { type: Number, min: 0, max: 100 },

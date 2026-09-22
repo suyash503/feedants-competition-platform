@@ -2,18 +2,34 @@
   "name": "feedants-competition-api",
   "version": "1.0.0",
   "scripts": {
-    "test": "node --test \"src/**/*.test.js\""
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed": "node scripts/seed.js",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "node --test \"src/**/*.test.js\"",
+    "test:integration": "node --test --test-concurrency=1 \"test/**/*.test.js\""
   },
   "author": "",
   "license": "ISC",
   "description": "Competition details API for Feedants",
   "dependencies": {
+    "cors": "^2.8.6",
     "dotenv": "^18.0.2",
-    "mongoose": "^8.24.4"
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.24.4",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "zod": "^3.25.76"
   },
   "type": "module",
   "private": true,
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.0"
   }
 }

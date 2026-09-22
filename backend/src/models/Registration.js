@@ -6,7 +6,7 @@ const { Schema } = mongoose;
 /**
  * Lifecycle of one user's entry into one competition:
  *
- *   PENDING_PAYMENT --pay ok--> CONFIRMED
+ *   INITIATED --seat claimed--> PENDING_PAYMENT --pay ok--> CONFIRMED
  *        |                          |
  *        +--hold expires--> EXPIRED  +--user/admin cancels--> CANCELLED
  *        +--pay failed----> (stays PENDING until retry or expiry)
@@ -14,8 +14,13 @@ const { Schema } = mongoose;
  * A seat is reserved the moment checkout starts (PENDING_PAYMENT) so two people can
  * never pay for the same last seat. `seatHeld` records whether this document currently
  * owns one of `competition.seats.taken`, which makes releasing a seat idempotent.
+ *
+ * Invariant: competition.seats.taken >= number of registrations with seatHeld = true.
+ * Every code path increments the counter BEFORE setting seatHeld, and clears seatHeld
+ * BEFORE decrementing, so a crash can only ever leak a seat (fixable), never oversell.
  */
 export const REGISTRATION_STATUS = Object.freeze({
+  INITIATED: 'initiated', // document exists, no seat claimed yet
   PENDING_PAYMENT: 'pending_payment',
   CONFIRMED: 'confirmed',
   EXPIRED: 'expired',
@@ -29,10 +34,15 @@ const registrationSchema = new Schema(
     status: {
       type: String,
       enum: Object.values(REGISTRATION_STATUS),
-      default: REGISTRATION_STATUS.PENDING_PAYMENT,
+      default: REGISTRATION_STATUS.INITIATED,
     },
     seatHeld: { type: Boolean, default: false },
     holdExpiresAt: { type: Date }, // only meaningful while PENDING_PAYMENT
+    // Short per-user lock while a seat is being claimed, so parallel requests from the
+    // same user cannot each take a seat. Self-expires if the process dies mid-claim.
+    claimLockedUntil: { type: Date },
+    // Incremented on every new hold. Used to derive a stable payment idempotency key per hold.
+    holdCount: { type: Number, default: 0, min: 0 },
 
     // Snapshot of the fee at checkout, so later price edits don't change what this user owes.
     amount: paise({ required: true }),
