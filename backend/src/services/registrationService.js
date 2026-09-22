@@ -75,6 +75,16 @@ async function getOrCreateOrder(registration, competition) {
  */
 export async function startRegistration({ competition, userId, referralCode, now }) {
   assertRegistrationOpen(competition, now);
+
+  // Fast path for the crowd that arrives after the last seat is gone: one read instead of
+  // the full claim sequence. It only ever *rejects*; seats are still granted exclusively by
+  // the atomic claimSeat() below, so a stale read here can't oversell.
+  if (competition.seats.taken >= competition.seats.total) {
+    const existing = await Registration.findOne({ competition: competition._id, user: userId }).lean();
+    const ownsSeat = existing?.seatHeld && (existing.status === CONFIRMED || existing.holdExpiresAt > now);
+    if (!ownsSeat) throw conflict('SOLD_OUT', 'All spots for this competition have been taken');
+  }
+
   const referredBy = await resolveReferrer(referralCode, userId);
 
   // Make sure a registration document exists (the unique index turns concurrent inserts into one).
