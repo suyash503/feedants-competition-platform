@@ -198,8 +198,38 @@ backend/
     services/      registration, seats, payments, submissions
   scripts/seed.js  demo data covering every lifecycle state
   test/            integration + concurrency tests
-mobile/            Expo app (in progress)
+mobile/
+  src/
+    app/           Expo Router routes only (thin files)
+    api/           typed fetch client, response types, React Query hooks
+    components/    shared UI kit (AppText, Card, Chip, ProgressBar...) + tab bar
+    features/
+      competition/ Competition Details + list screens, one component per section
+      profile/     demo user switcher
+    hooks/         server-synced countdown
+    i18n/          English / हिंदी strings and language context
+    lib/           money/date formatting, server clock, secure storage
+    session/       dev sign-in session
+    theme/         design tokens sampled from the design
 ```
+
+## Mobile app
+
+The Competition Details screen is built section by section from the design, and **every value on it comes
+from the API**. Only the app's own UI labels live in the app.
+
+| Concern | How it's handled |
+|---|---|
+| **Three data sources** | `GET /competitions/:slug` (content, cached a minute), `/availability` (seats + phase, polled every 10 s), `/me` (personal state + CTA). The screen shows whichever seats/phase snapshot is newest |
+| **Countdown** | Ticks every second from a **server-synced clock** (offset measured on every response, latency-corrected). Changing the phone's time doesn't move it. When it hits zero the screen refetches, because the phase just changed |
+| **Bottom CTA** | Renders the server's `action`. `describeAction()` only turns it into words |
+| **States** | Loading skeletons that mirror the layout, offline / error with retry, 404, pull-to-refresh, sold out, upcoming, results, registered, payment pending |
+| **Language** | ENG / हिंदी toggle switches UI labels *and* server content (which ships both languages) instantly, and the choice is remembered |
+| **Small screens** | Money and the countdown never truncate. Rows wrap instead (checked at 375 px) |
+| **Accessibility** | Roles, states and labels on the tabs, toggle, progress bar, timer and CTA |
+
+The Profile tab switches between demo users (e.g. *Kavya*, who is already registered), so every per-user
+state can be shown without touching the database.
 
 ## Getting started
 
@@ -224,6 +254,20 @@ curl -X POST localhost:4000/api/v1/auth/dev-login -H "content-type: application/
 
 Seeded competitions: `classical-dance` (the design: open, 19 spots left), `bollywood-beats` (sold out),
 `folk-fusion` (upcoming), `kathak-classics-july` (results out), `open-mic-dance` (free entry).
+
+### Mobile
+
+```bash
+cd mobile
+npm install
+npx expo start            # press w for web, or scan the QR code with Expo Go
+```
+
+In development the app finds the API automatically on the machine serving the bundle (port 4000), so a
+phone on the same Wi-Fi works with no setup. To point it elsewhere, set `EXPO_PUBLIC_API_URL`
+(e.g. `EXPO_PUBLIC_API_URL=https://api.example.com`). On first launch it signs in as the seeded demo user.
+
+### Tests
 
 Tests use their own databases and never touch the dev one:
 
@@ -252,9 +296,11 @@ MONGODB_URI_TEST=mongodb://127.0.0.1:27017/feedants_test npm test
 - [x] Race-safe seat reservation with expiring holds
 - [x] Seed data matching the design
 - [x] Integration + concurrency test suite in CI
-- [ ] Expo app: pixel-accurate Competition Details screen
-- [ ] Live countdown synced to server time, live seat counter
-- [ ] English / हिंदी toggle
+- [x] Expo app: Competition Details screen matching the design, from reusable components
+- [x] Live countdown synced to server time, polled seat counter
+- [x] English / हिंदी toggle
+- [ ] In-app register → pay → upload flow, in-app video player
+- [ ] Push-based live seat counter (SSE) instead of polling
 - [ ] Load test: many concurrent users racing for the last seats
 - [ ] Docker Compose for one-command local setup
 - [ ] Demo video
