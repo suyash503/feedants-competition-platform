@@ -11,6 +11,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ApiError } from '@/api/client';
+import { ToastProvider } from '@/components/Toast';
 import { LanguageProvider } from '@/i18n';
 import { SessionProvider } from '@/session/SessionProvider';
 
@@ -38,10 +39,12 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <LanguageProvider>
           <SessionProvider>
-            <StatusBar style="dark" />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" />
-            </Stack>
+            <ToastProvider>
+              <StatusBar style="dark" />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(tabs)" />
+              </Stack>
+            </ToastProvider>
           </SessionProvider>
         </LanguageProvider>
       </QueryClientProvider>

@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, setAuthToken } from '@/api/client';
+import { api, onUnauthorized, setAuthToken } from '@/api/client';
 import type { SessionUser } from '@/api/types';
 import { storage } from '@/lib/storage';
 
@@ -67,6 +67,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       cancelled = true;
     };
   }, [signIn, attempt]);
+
+  // Token rejected by the server: forget it and sign in again (once per rejection burst).
+  useEffect(() => {
+    onUnauthorized(() => {
+      setAuthToken(null);
+      storage.remove(SESSION_KEY).finally(() => {
+        setStatus('loading');
+        setAttempt((a) => a + 1);
+      });
+    });
+    return () => onUnauthorized(null);
+  }, []);
 
   const retry = useCallback(() => {
     setStatus('loading');

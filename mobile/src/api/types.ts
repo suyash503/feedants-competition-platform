@@ -133,3 +133,8 @@ export type ViewerState = {
 };
 
 export type SessionUser = { id: string; name: string; phone: string; referralCode: string };
+
+export type Results = {
+  competitionId: string;
+  items: { rank: number; name: string; avatarUrl: string | null; score: number | null; prize: number; videoUrl: string }[];
+};

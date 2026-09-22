@@ -5,3 +5,6 @@ export { ProgressBar } from './ProgressBar';
 export { SectionTitle } from './SectionTitle';
 export { Skeleton } from './Skeleton';
 export { StateView } from './StateView';
+export { BottomSheet } from './BottomSheet';
+export { Button } from './Button';
+export { Notice } from './Notice';

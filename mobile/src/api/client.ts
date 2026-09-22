@@ -35,6 +35,13 @@ let authToken: string | null = null;
 export const setAuthToken = (token: string | null) => {
   authToken = token;
 };
+export const getAuthToken = () => authToken;
+
+/** Called when the server rejects our token (expired, or the account is gone). */
+let unauthorizedHandler: (() => void) | null = null;
+export const onUnauthorized = (handler: (() => void) | null) => {
+  unauthorizedHandler = handler;
+};
 
 type Options = { method?: 'GET' | 'POST' | 'PUT' | 'DELETE'; body?: unknown; signal?: AbortSignal };
 
@@ -59,6 +66,7 @@ export async function api<T>(path: string, { method = 'GET', body, signal }: Opt
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
+    if (res.status === 401 && authToken) unauthorizedHandler?.();
     throw new ApiError(res.status, data?.error?.code ?? 'HTTP_ERROR', data?.error?.message ?? res.statusText);
   }
   // Any response with a timeline lets us keep the countdown aligned with server time.
