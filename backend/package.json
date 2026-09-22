@@ -1,0 +1,19 @@
+{
+  "name": "feedants-competition-api",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node --test \"src/**/*.test.js\""
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "Competition details API for Feedants",
+  "dependencies": {
+    "dotenv": "^18.0.2",
+    "mongoose": "^8.24.4"
+  },
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  }
+}
