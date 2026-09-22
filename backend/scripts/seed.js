@@ -21,7 +21,8 @@ const at = (offsetMs) => new Date(now + offsetMs);
 const rupees = (n) => n * 100;
 
 const avatar = (n) => `https://i.pravatar.cc/300?img=${n}`;
-const SAMPLE_VIDEO = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4';
+// CC0-licensed sample clip hosted by MDN.
+const SAMPLE_VIDEO = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 
 const dancePrizes = [550, 300, 240, 200, 130, 80];
 
@@ -50,6 +51,51 @@ const classicalContent = {
     hi: 'केवल भुगतान करने वाले प्रतिभागियों की प्रविष्टियों पर ही निर्णय किया जाएगा।',
   },
 };
+
+const FIRST_NAMES = ['Aditi', 'Rahul', 'Sneha', 'Vikram', 'Pooja', 'Arjun', 'Meera', 'Karan', 'Ananya', 'Rohit',
+  'Divya', 'Siddharth', 'Nisha', 'Aman', 'Priya', 'Varun', 'Tanvi', 'Harsh', 'Isha', 'Dev'];
+const LAST_NAMES = ['Sharma', 'Iyer', 'Kapoor', 'Reddy', 'Das', 'Joshi', 'Menon', 'Gupta', 'Bose', 'Patel'];
+
+/**
+ * Fill `count` seats with real confirmed registrations so seats.taken always matches the
+ * registrations behind it. With `ranked`, also creates scored submissions (for results).
+ */
+async function fillSeats(competition, count, { phonePrefix, ranked = 0 }) {
+  const users = await User.create(
+    Array.from({ length: count }, (_, i) => ({
+      name: `${FIRST_NAMES[i % FIRST_NAMES.length]} ${LAST_NAMES[(i * 3) % LAST_NAMES.length]}`,
+      phone: `${phonePrefix}${String(i).padStart(4, '0')}`,
+      avatarUrl: avatar(10 + (i % 60)),
+    })),
+  );
+  const registrations = await Registration.create(
+    users.map((u) => ({
+      competition: competition._id,
+      user: u._id,
+      status: 'confirmed',
+      seatHeld: true,
+      amount: competition.entryFee,
+      holdCount: 1,
+      confirmedAt: competition.schedule.registrationOpensAt,
+    })),
+  );
+  if (ranked) {
+    await Submission.create(
+      registrations.slice(0, ranked).map((r, i) => ({
+        registration: r._id,
+        competition: competition._id,
+        user: r.user,
+        video: { url: SAMPLE_VIDEO, mimeType: 'video/mp4' },
+        status: 'scored',
+        revision: 1,
+        submittedAt: competition.schedule.submissionStartsAt,
+        score: 96 - i * 4,
+        rank: i + 1,
+      })),
+    );
+  }
+  await Competition.updateOne({ _id: competition._id }, { $set: { 'seats.taken': count } });
+}
 
 async function seed() {
   await connectDb(env.mongoUri);
@@ -127,12 +173,12 @@ async function seed() {
   });
 
   // 2. Sold out: shows the "Competition Full" state.
-  await Competition.create({
+  const bollywood = await Competition.create({
     ...base,
     slug: 'bollywood-beats',
     title: { en: 'Bollywood Beats', hi: 'बॉलीवुड बीट्स' },
     judge: rohan._id,
-    seats: { total: 20, taken: 20 },
+    seats: { total: 20, taken: 0 },
     schedule: {
       registrationOpensAt: at(-3 * DAY),
       registrationClosesAt: at(2 * DAY),
@@ -141,6 +187,8 @@ async function seed() {
       resultAt: at(12 * DAY),
     },
   });
+
+  await fillSeats(bollywood, 20, { phonePrefix: '+91910000' });
 
   // 3. Upcoming: registration opens tomorrow.
   await Competition.create({
@@ -158,13 +206,13 @@ async function seed() {
     },
   });
 
-  // 4. Finished: results announced.
-  await Competition.create({
+  // 4. Finished: results announced, with ranked entries.
+  const finished = await Competition.create({
     ...base,
     slug: 'kathak-classics-july',
     title: { en: 'Kathak Classics (July)', hi: 'कथक क्लासिक्स (जुलाई)' },
     judge: manju._id,
-    seats: { total: 20, taken: 17 },
+    seats: { total: 20, taken: 0 },
     schedule: {
       registrationOpensAt: at(-60 * DAY),
       registrationClosesAt: at(-45 * DAY),
@@ -173,6 +221,8 @@ async function seed() {
       resultAt: at(-30 * DAY),
     },
   });
+
+  await fillSeats(finished, 17, { phonePrefix: '+91920000', ranked: 6 });
 
   // 5. Free entry: registering confirms instantly, no payment step.
   await Competition.create({
