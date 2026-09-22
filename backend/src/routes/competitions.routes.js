@@ -6,6 +6,7 @@ import { writeLimiter } from '../middleware/rateLimit.js';
 import { validate } from '../middleware/validate.js';
 import {
   findCompetition,
+  getResults,
   getViewerState,
   listCompetitions,
   serializeAvailability,
@@ -65,6 +66,12 @@ competitionsRouter.get('/:idOrSlug/availability', validate({ params }), async (r
   const competition = await findCompetition(req.params.idOrSlug);
   res.set('Cache-Control', 'no-store');
   res.json(serializeAvailability(competition, clock.now()));
+});
+
+competitionsRouter.get('/:idOrSlug/results', validate({ params }), async (req, res) => {
+  const competition = await findCompetition(req.params.idOrSlug);
+  res.set('Cache-Control', 'public, max-age=60');
+  res.json(await getResults(competition, clock.now()));
 });
 
 // Everything specific to the signed-in user: registration, CTA, submission, referral.

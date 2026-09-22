@@ -84,6 +84,14 @@ describe('auth', () => {
     assert.equal(me.body.referral.code, first.body.user.referralCode);
   });
 
+  test('a valid token for a deleted account gets 401 so the app signs in again', async () => {
+    const c = await createCompetition();
+    const [u] = await createUsers(1);
+    await User.deleteOne({ _id: u.id });
+    const res = await api().get(`/api/v1/competitions/${c.slug}/me`).set(u.auth).expect(401);
+    assert.equal(res.body.error.code, 'UNAUTHORIZED');
+  });
+
   test('rejects an invalid phone number', async () => {
     const res = await api().post('/api/v1/auth/dev-login').send({ phone: 'abc' }).expect(400);
     assert.equal(res.body.error.code, 'VALIDATION_ERROR');

@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { env } from '../config/env.js';
 import { getTimeline } from '../domain/competitionPhase.js';
 import { getViewerAction } from '../domain/viewerAction.js';
-import { notFound } from '../lib/errors.js';
+import { conflict, notFound, unauthorized } from '../lib/errors.js';
 import { Competition, Payment, Registration, Submission, User, PAYMENT_STATUS } from '../models/index.js';
 
 /** Accepts either a Mongo id or a slug, so links can be human readable. */
@@ -96,6 +96,30 @@ export function serializePayment(p) {
   };
 }
 
+/** Final standings with prize money. Only available once results are announced. */
+export async function getResults(competition, now) {
+  if (getTimeline(competition, now).phase !== 'results_announced') {
+    throw conflict('RESULTS_NOT_OUT', 'Results have not been announced yet');
+  }
+  const ranked = await Submission.find({ competition: competition._id, rank: { $gte: 1 } })
+    .sort({ rank: 1 })
+    .limit(100)
+    .populate('user', 'name avatarUrl')
+    .lean();
+  const prizeFor = new Map(competition.rewards.map((r) => [r.position, r.amount]));
+  return {
+    competitionId: competition._id,
+    items: ranked.map((s) => ({
+      rank: s.rank,
+      name: s.user?.name ?? 'Participant',
+      avatarUrl: s.user?.avatarUrl ?? null,
+      score: s.score ?? null,
+      prize: prizeFor.get(s.rank) ?? 0,
+      videoUrl: s.video.url,
+    })),
+  };
+}
+
 /** Everything that depends on who is looking: registration, submission, CTA, referral. */
 export async function getViewerState(competition, userId, now) {
   const [registration, submission, user, referralSignups] = await Promise.all([
@@ -104,7 +128,8 @@ export async function getViewerState(competition, userId, now) {
     User.findById(userId).select('referralCode').lean(),
     Registration.countDocuments({ competition: competition._id, referredBy: userId, status: 'confirmed' }),
   ]);
-  if (!user) throw notFound('User');
+  // A valid token for an account that no longer exists: make the client sign in again.
+  if (!user) throw unauthorized('Account not found, please sign in again');
 
   const timeline = getTimeline(competition, now);
   const seats = seatsOf(competition);

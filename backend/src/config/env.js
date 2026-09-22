@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import dotenv from 'dotenv';
 
 dotenv.config({ quiet: true });
@@ -39,6 +40,10 @@ export const env = Object.freeze({
   seatHoldMinutes: int('SEAT_HOLD_MINUTES', 10),
   holdSweepIntervalMs: int('HOLD_SWEEP_INTERVAL_MS', 30_000),
   writeRateLimitPerMinute: int('WRITE_RATE_LIMIT_PER_MINUTE', 30),
+
+  uploadDir: process.env.UPLOAD_DIR ?? fileURLToPath(new URL('../../uploads', import.meta.url)),
+  maxUploadMb: int('MAX_UPLOAD_MB', 200),
+  publicBaseUrl: process.env.PUBLIC_BASE_URL || undefined,
 
   referralBaseUrl: process.env.REFERRAL_BASE_URL ?? 'https://feedants.com/r/',
   corsOrigin: process.env.CORS_ORIGIN ?? '*',

@@ -24,6 +24,9 @@ export function errorHandler(err, req, res, _next) {
   if (err instanceof mongoose.Error.CastError) return send(res, 404, 'NOT_FOUND', 'Resource not found');
   if (isDuplicateKeyError(err)) return send(res, 409, 'DUPLICATE', 'Resource already exists');
   if (err.type === 'entity.parse.failed') return send(res, 400, 'INVALID_JSON', 'Malformed JSON body');
+  // Client errors raised by Express/middleware itself (e.g. a missing static file).
+  const status = err.status ?? err.statusCode;
+  if (status >= 400 && status < 500) return send(res, status, status === 404 ? 'NOT_FOUND' : 'BAD_REQUEST', err.message);
 
   req.log?.error({ err }, 'unhandled error');
   return send(res, 500, 'INTERNAL_ERROR', 'Something went wrong');
