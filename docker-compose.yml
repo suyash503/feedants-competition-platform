@@ -1,0 +1,51 @@
+# One command demo: MongoDB + seed data + API.
+#   docker compose up --build
+#   → http://localhost:4000/api/v1/competitions/classical-dance
+name: feedants
+
+services:
+  mongo:
+    image: mongo:8
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # One-shot: loads the demo competitions, but only into an empty database,
+  # so restarting the stack never wipes data.
+  seed:
+    build: ./backend
+    command: ["node", "scripts/seed.js", "--if-empty"]
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongo:27017/feedants
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: ./backend
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongo:27017/feedants
+      PORT: 4000
+      # Demo defaults. Override in a .env file next to this compose file.
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      PAYMENT_MOCK_SECRET: ${PAYMENT_MOCK_SECRET:-change-me-too}
+      ENABLE_DEV_LOGIN: ${ENABLE_DEV_LOGIN:-true}
+    ports:
+      - "4000:4000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+volumes:
+  mongo-data:
+  uploads:

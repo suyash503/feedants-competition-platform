@@ -56,3 +56,37 @@ jobs:
         run: npx tsc --noEmit
       - name: Lint
         run: npx expo lint
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start the stack
+        run: docker compose up -d --build
+      - name: Wait for the API to be healthy
+        run: |
+          for i in $(seq 1 60); do
+            curl -fs localhost:4000/health && exit 0
+            sleep 2
+          done
+          docker compose logs
+          exit 1
+      - name: Smoke test
+        run: |
+          set -e
+          curl -fs localhost:4000/api/v1/competitions/classical-dance | jq -e '.prizePool == 150000 and .seats.left == 19'
+          TOKEN=$(curl -fs -X POST localhost:4000/api/v1/auth/dev-login -H 'content-type: application/json' -d '{"phone":"+919812345678"}' | jq -r .token)
+          curl -fs -X POST localhost:4000/api/v1/competitions/classical-dance/registrations \
+            -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' -d '{}' | jq -e '.action.type == "complete_payment"'
+          curl -fs localhost:4000/api/v1/competitions/classical-dance/availability | jq -e '.seats.taken == 2'
+      - name: Restart keeps data (seed only runs on an empty database)
+        run: |
+          docker compose up -d
+          for i in $(seq 1 30); do curl -fs localhost:4000/health && break; sleep 2; done
+          curl -fs localhost:4000/api/v1/competitions/classical-dance/availability | jq -e '.seats.taken == 2'
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

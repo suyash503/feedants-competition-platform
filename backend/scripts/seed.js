@@ -2,6 +2,7 @@
  * Seeds the database with the competition from the design plus a few more in other
  * lifecycle states, so every screen state can be demoed. Dates are relative to "now"
  * so the demo never goes stale. Usage: npm run seed
+ * With --if-empty it does nothing when competitions already exist (used by Docker Compose).
  */
 import mongoose from 'mongoose';
 import { connectDb } from '../src/config/db.js';
@@ -99,6 +100,11 @@ async function fillSeats(competition, count, { phonePrefix, ranked = 0 }) {
 
 async function seed() {
   await connectDb(env.mongoUri);
+  if (process.argv.includes('--if-empty') && (await Competition.estimatedDocumentCount()) > 0) {
+    console.log('Database already has competitions; skipping seed.');
+    await mongoose.disconnect();
+    return;
+  }
   await Promise.all([Competition, Judge, Payment, Registration, Submission, User].map((m) => m.deleteMany({})));
 
   const [manju, rohan] = await Judge.create([
