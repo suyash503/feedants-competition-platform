@@ -21,7 +21,8 @@ const now = Date.now();
 const at = (offsetMs) => new Date(now + offsetMs);
 const rupees = (n) => n * 100;
 
-const avatar = (n) => `https://i.pravatar.cc/300?img=${n}`;
+// Placeholder portraits (randomuser.me), matched to each name's gender.
+const avatar = (gender, n) => `https://randomuser.me/api/portraits/${gender}/${n}.jpg`;
 // CC0-licensed sample clip hosted by MDN.
 const SAMPLE_VIDEO = 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
 
@@ -53,8 +54,12 @@ const classicalContent = {
   },
 };
 
-const FIRST_NAMES = ['Aditi', 'Rahul', 'Sneha', 'Vikram', 'Pooja', 'Arjun', 'Meera', 'Karan', 'Ananya', 'Rohit',
-  'Divya', 'Siddharth', 'Nisha', 'Aman', 'Priya', 'Varun', 'Tanvi', 'Harsh', 'Isha', 'Dev'];
+const FIRST_NAMES = [
+  ['Aditi', 'women'], ['Rahul', 'men'], ['Sneha', 'women'], ['Vikram', 'men'], ['Pooja', 'women'],
+  ['Arjun', 'men'], ['Meera', 'women'], ['Karan', 'men'], ['Ananya', 'women'], ['Rohit', 'men'],
+  ['Divya', 'women'], ['Siddharth', 'men'], ['Nisha', 'women'], ['Aman', 'men'], ['Priya', 'women'],
+  ['Varun', 'men'], ['Tanvi', 'women'], ['Harsh', 'men'], ['Isha', 'women'], ['Dev', 'men'],
+];
 const LAST_NAMES = ['Sharma', 'Iyer', 'Kapoor', 'Reddy', 'Das', 'Joshi', 'Menon', 'Gupta', 'Bose', 'Patel'];
 
 /**
@@ -64,9 +69,9 @@ const LAST_NAMES = ['Sharma', 'Iyer', 'Kapoor', 'Reddy', 'Das', 'Joshi', 'Menon'
 async function fillSeats(competition, count, { phonePrefix, ranked = 0 }) {
   const users = await User.create(
     Array.from({ length: count }, (_, i) => ({
-      name: `${FIRST_NAMES[i % FIRST_NAMES.length]} ${LAST_NAMES[(i * 3) % LAST_NAMES.length]}`,
+      name: `${FIRST_NAMES[i % FIRST_NAMES.length][0]} ${LAST_NAMES[(i * 3) % LAST_NAMES.length]}`,
       phone: `${phonePrefix}${String(i).padStart(4, '0')}`,
-      avatarUrl: avatar(10 + (i % 60)),
+      avatarUrl: avatar(FIRST_NAMES[i % FIRST_NAMES.length][1], 10 + ((i * 7) % 80)),
     })),
   );
   const registrations = await Registration.create(
@@ -110,14 +115,14 @@ async function seed() {
   const [manju, rohan] = await Judge.create([
     {
       name: 'Manju Dubey',
-      photoUrl: avatar(47),
+      photoUrl: avatar('women', 44),
       designation: { en: 'Professional Kathak Dancer', hi: 'पेशेवर कथक नृत्यांगना' },
       yearsOfExperience: 12,
       introVideoUrl: SAMPLE_VIDEO,
     },
     {
       name: 'Rohan Iyer',
-      photoUrl: avatar(12),
+      photoUrl: avatar('men', 32),
       designation: { en: 'Choreographer & Bollywood Dancer', hi: 'कोरियोग्राफ़र और बॉलीवुड डांसर' },
       yearsOfExperience: 9,
       introVideoUrl: SAMPLE_VIDEO,
@@ -131,10 +136,10 @@ async function seed() {
   ]);
 
   const previousWinners = [
-    { name: 'Riya Shah', avatarUrl: avatar(45), videoUrl: SAMPLE_VIDEO, position: 1, edition: 'July 2026' },
-    { name: 'Aarav Mehta', avatarUrl: avatar(33), videoUrl: SAMPLE_VIDEO, position: 1, edition: 'June 2026' },
-    { name: 'Neha Verma', avatarUrl: avatar(44), videoUrl: SAMPLE_VIDEO, position: 2, edition: 'July 2026' },
-    { name: 'Ishita Chopra', avatarUrl: avatar(49), videoUrl: SAMPLE_VIDEO, position: 3, edition: 'July 2026' },
+    { name: 'Riya Shah', avatarUrl: avatar('women', 65), videoUrl: SAMPLE_VIDEO, position: 1, edition: 'July 2026' },
+    { name: 'Aarav Mehta', avatarUrl: avatar('men', 75), videoUrl: SAMPLE_VIDEO, position: 1, edition: 'June 2026' },
+    { name: 'Neha Verma', avatarUrl: avatar('women', 68), videoUrl: SAMPLE_VIDEO, position: 2, edition: 'July 2026' },
+    { name: 'Ishita Chopra', avatarUrl: avatar('women', 79), videoUrl: SAMPLE_VIDEO, position: 3, edition: 'July 2026' },
   ];
 
   const base = {
