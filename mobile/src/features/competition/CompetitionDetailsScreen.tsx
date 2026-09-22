@@ -1,12 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
-import { Linking, RefreshControl, ScrollView, View } from 'react-native';
+import { RefreshControl, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '@/api/client';
 import { useAvailability, useCompetition, useViewerState } from '@/api/competitions';
 import type { Seats, Timeline } from '@/api/types';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { StateView } from '@/components/ui';
+import { VideoPlayerModal } from '@/components/VideoPlayerModal';
 import { useServerNow } from '@/hooks/useCountdown';
 import { useI18n } from '@/i18n';
 import { useSession } from '@/session/SessionProvider';
@@ -24,7 +25,10 @@ import { PreviousWinners } from './components/PreviousWinners';
 import { ReferralCard } from './components/ReferralCard';
 import { RewardsCard } from './components/RewardsCard';
 import { TrustRow } from './components/TrustRow';
+import { CheckoutSheet } from './checkout/CheckoutSheet';
 import { describeAction } from './describeAction';
+import { ResultsSheet } from './results/ResultsSheet';
+import { UploadSheet } from './submission/UploadSheet';
 
 type Live = { seats: Seats; timeline: Timeline };
 
@@ -54,10 +58,9 @@ export function CompetitionDetailsScreen({ slug }: { slug: string }) {
     setRefreshing(false);
   }, [refetchAll]);
 
-  // Until the in-app player lands, videos open in the system player/browser.
-  const playVideo = useCallback((url: string) => {
-    Linking.openURL(url).catch(() => {});
-  }, []);
+  const [sheet, setSheet] = useState<'checkout' | 'upload' | 'results' | null>(null);
+  const [video, setVideo] = useState<{ url: string; title?: string } | null>(null);
+  const playVideo = useCallback((url: string, title?: string) => setVideo({ url, title }), []);
 
   if (details.isPending) {
     return (
@@ -98,8 +101,19 @@ export function CompetitionDetailsScreen({ slug }: { slug: string }) {
     : personalStateFailed
       ? { label: t.somethingWrong, sublabel: t.retry, enabled: true }
       : null;
-  // Register / pay / upload flows are wired up in the next step; for now only recovery is handled.
-  const onActionPress = personalStateFailed ? () => (session.status === 'error' ? session.retry() : viewer.refetch()) : undefined;
+  const onActionPress = () => {
+    if (personalStateFailed) return session.status === 'error' ? session.retry() : viewer.refetch();
+    switch (viewer.data?.action.type) {
+      case 'register':
+      case 'complete_payment':
+        return setSheet('checkout');
+      case 'upload_submission':
+      case 'replace_submission':
+        return setSheet('upload');
+      case 'view_results':
+        return setSheet('results');
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={['top']}>
@@ -115,7 +129,7 @@ export function CompetitionDetailsScreen({ slug }: { slug: string }) {
           registrationStatus={registration?.status}
           holdActive={holdActive}
         />
-        <JudgeCard judge={competition.judge} onPlayIntro={playVideo} />
+        <JudgeCard judge={competition.judge} onPlayIntro={(url) => playVideo(url, competition.judge.name)} />
         <CountdownBanner countdown={live.timeline.countdown} seatsLeft={live.seats.left} onExpire={refetchAll} />
         <ImportantDates schedule={competition.schedule} />
         <PreviousWinners winners={competition.previousWinners} onPlay={playVideo} />
@@ -130,6 +144,23 @@ export function CompetitionDetailsScreen({ slug }: { slug: string }) {
       <View style={{ borderTopWidth: 1, borderColor: colors.divider }}>
         <ActionBar description={action} onPress={onActionPress} />
       </View>
+
+      {sheet === 'checkout' && viewer.data ? (
+        <CheckoutSheet
+          slug={slug}
+          competition={competition}
+          viewer={{ ...viewer.data, ...live }}
+          onClose={() => setSheet(null)}
+          onUploadNow={() => setSheet('upload')}
+        />
+      ) : null}
+      {sheet === 'upload' && viewer.data ? (
+        <UploadSheet slug={slug} viewer={viewer.data} onClose={() => setSheet(null)} onWatch={(url) => playVideo(url)} />
+      ) : null}
+      {sheet === 'results' ? (
+        <ResultsSheet slug={slug} onClose={() => setSheet(null)} onWatch={playVideo} />
+      ) : null}
+      {video ? <VideoPlayerModal url={video.url} title={video.title} onClose={() => setVideo(null)} /> : null}
     </SafeAreaView>
   );
 }
