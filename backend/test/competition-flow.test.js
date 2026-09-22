@@ -33,6 +33,23 @@ describe('public competition details', () => {
     assert.match(res.headers['cache-control'], /max-age=5/);
   });
 
+  test('list shows joinable competitions first and hides drafts', async () => {
+    await createCompetition({ slug: 'finished', schedule: {
+      registrationOpensAt: new Date(Date.now() - 20 * DAY),
+      registrationClosesAt: new Date(Date.now() - 15 * DAY),
+      submissionStartsAt: new Date(Date.now() - 20 * DAY),
+      submissionEndsAt: new Date(Date.now() - 10 * DAY),
+      resultAt: new Date(Date.now() - 5 * DAY),
+    } });
+    await createCompetition({ slug: 'open-now' });
+    await createCompetition({ slug: 'secret', status: 'draft' });
+
+    const res = await api().get('/api/v1/competitions').expect(200);
+    assert.deepEqual(res.body.items.map((c) => c.slug), ['open-now', 'finished']);
+    assert.equal(res.body.items[0].timeline.phase, 'registration_open');
+    assert.equal(res.body.items[0].seats.left, 20);
+  });
+
   test('can be looked up by id as well as slug', async () => {
     const c = await createCompetition();
     await api().get(`/api/v1/competitions/${c._id}`).expect(200);

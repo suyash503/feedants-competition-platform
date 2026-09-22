@@ -7,7 +7,9 @@ import { validate } from '../middleware/validate.js';
 import {
   findCompetition,
   getViewerState,
+  listCompetitions,
   serializeAvailability,
+  serializeCompetitionSummary,
   serializeCompetition,
   serializePayment,
 } from '../services/competitionService.js';
@@ -30,6 +32,25 @@ const submissionBody = z.object({
     sizeBytes: z.number().int().positive().max(MAX_VIDEO_BYTES, 'Video must be 500 MB or smaller').optional(),
     durationSec: z.number().positive().max(15 * 60, 'Video must be 15 minutes or shorter').optional(),
   }),
+});
+
+const listQuery = z.object({ limit: z.coerce.number().int().min(1).max(50).default(20) });
+
+const PHASE_ORDER = ['registration_open', 'upcoming', 'submission_only', 'judging', 'results_announced', 'cancelled'];
+
+// Published competitions: the ones you can still join first, then by deadline.
+competitionsRouter.get('/', async (req, res) => {
+  const { limit } = listQuery.parse(req.query);
+  const now = clock.now();
+  const items = (await listCompetitions({ limit }))
+    .map((c) => serializeCompetitionSummary(c, now))
+    .sort(
+      (a, b) =>
+        PHASE_ORDER.indexOf(a.timeline.phase) - PHASE_ORDER.indexOf(b.timeline.phase) ||
+        (a.timeline.countdown?.endsAt ?? 0) - (b.timeline.countdown?.endsAt ?? 0),
+    );
+  res.set('Cache-Control', 'public, max-age=15');
+  res.json({ items });
 });
 
 // Public details. The seat counter changes often, so it may only be cached for a moment.

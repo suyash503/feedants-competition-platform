@@ -15,6 +15,14 @@ export async function findCompetition(idOrSlug, { populateJudge = false } = {}) 
   return competition;
 }
 
+export function listCompetitions({ limit }) {
+  return Competition.find({ status: { $in: ['published', 'cancelled'] } })
+    .sort({ 'schedule.registrationClosesAt': -1 })
+    .limit(limit)
+    .select('slug title category entryFee prizePool seats schedule status rewards certificateForWinners')
+    .lean();
+}
+
 const seatsOf = (c) => ({
   total: c.seats.total,
   taken: Math.min(c.seats.taken, c.seats.total),
@@ -51,6 +59,23 @@ export function serializeCompetition(c, now) {
     previousWinners: [...(c.previousWinners ?? [])].sort((a, b) => a.position - b.position),
     referral: { rewardPerSignup: c.referral?.rewardPerSignup ?? 0 },
     links: c.links ?? {},
+    timeline: getTimeline(c, now),
+  };
+}
+
+/** Card-sized view for lists. */
+export function serializeCompetitionSummary(c, now) {
+  return {
+    id: c._id,
+    slug: c.slug,
+    title: c.title,
+    category: c.category,
+    entryFee: c.entryFee,
+    prizePool: c.prizePool,
+    currency: 'INR',
+    isMultiWin: c.rewards.length > 1,
+    certificateForWinners: c.certificateForWinners,
+    seats: seatsOf(c),
     timeline: getTimeline(c, now),
   };
 }
