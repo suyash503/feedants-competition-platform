@@ -136,12 +136,14 @@ and the app switches on `code`.
 |---|---|---|---|
 | `GET` | `/competitions/:idOrSlug` | – | Public details: content, judge, rewards, dates, seats, current phase. Briefly cacheable |
 | `GET` | `/competitions/:idOrSlug/availability` | – | Just seats + phase, cheap to poll for the live counter |
+| `GET` | `/competitions/:idOrSlug/results` | – | Final ranking with prize money (only once results are announced) |
 | `GET` | `/competitions/:idOrSlug/me` | ✓ | This user's registration, submission, **the CTA to show**, referral stats |
 | `POST` | `/competitions/:idOrSlug/registrations` | ✓ | Reserve a seat and get a payment order (confirms instantly if free). Optional `referralCode` |
 | `DELETE` | `/competitions/:idOrSlug/registrations/me` | ✓ | Give up an unpaid seat hold |
 | `POST` | `/payments/verify` | ✓ | Verify the gateway's signature, confirm the registration. Idempotent |
 | `PUT` | `/competitions/:idOrSlug/submission` | ✓ | Upload or replace the entry video (only when registered and the window is open) |
 | `POST` | `/mock-gateway/checkout` | ✓ | Dev only: plays the payment SDK, `outcome: success \| failure` |
+| `POST` | `/uploads/videos` | ✓ | Upload a performance video (multipart, MP4/MOV/WebM, size-limited). Returns its URL |
 | `POST` | `/auth/dev-login` | – | Dev only: phone number in, JWT out |
 | `GET` | `/health` | – | Liveness + DB status |
 
@@ -169,7 +171,7 @@ The `action.type` returned by `/me` is what the bottom button renders:
 
 ## Testing
 
-37 tests, run in CI against a real MongoDB on Node 22 and 24. Highlights from
+43 tests, run in CI against a real MongoDB on Node 22 and 24. Highlights from
 [`concurrency.test.js`](backend/test/concurrency.test.js):
 
 | Scenario | Guarantee checked |
@@ -227,6 +229,24 @@ from the API**. Only the app's own UI labels live in the app.
 | **Language** | ENG / हिंदी toggle switches UI labels *and* server content (which ships both languages) instantly, and the choice is remembered |
 | **Small screens** | Money and the countdown never truncate. Rows wrap instead (checked at 375 px) |
 | **Accessibility** | Roles, states and labels on the tabs, toggle, progress bar, timer and CTA |
+
+### User flows
+
+| Flow | What happens |
+|---|---|
+| **Register → pay** | A sheet confirms the entry (with an optional referral code) and reserves a seat. A mock gateway sheet then shows the order and a **live seat-hold timer**, with *Pay*, *Simulate a failed payment* and *Cancel & release my seat*. |
+| **Upload** | Pick a video, which is checked on the device (type, size, length) before upload. It uploads with a **progress bar** and can be cancelled. Replacing a video bumps its version. |
+| **Results / media** | Ranked results with prize money, and an **in-app video player** for judge intros, previous winners, results and the prize-payout explainer. |
+| **Referral links** | `feedants://r/CODE` (or `/r/CODE` on web) remembers the code and pre-fills it at checkout. |
+
+Every server error code maps to a clear message in both languages. Some examples:
+- The last seat is taken while you're deciding (`SOLD_OUT`).
+- The hold expires mid-payment.
+- A payment arrives after the seat was lost (`SEAT_LOST_REFUNDED`).
+- A declined card, where the seat stays held.
+- Rate limiting, or the account no longer existing (401 → automatic sign-in again).
+
+After any failed action the screen refetches, so it always shows the server's truth.
 
 The Profile tab switches between demo users (e.g. *Kavya*, who is already registered), so every per-user
 state can be shown without touching the database.
@@ -288,6 +308,9 @@ MONGODB_URI_TEST=mongodb://127.0.0.1:27017/feedants_test npm test
 | `WRITE_RATE_LIMIT_PER_MINUTE` | Per-user limit on register/pay/submit | `30` |
 | `REFERRAL_BASE_URL` | Prefix for referral links | `https://feedants.com/r/` |
 | `CORS_ORIGIN` | Allowed origins, comma separated | `*` |
+| `MAX_UPLOAD_MB` | Largest accepted video | `200` |
+| `UPLOAD_DIR` | Where dev uploads are stored | `backend/uploads` |
+| `PUBLIC_BASE_URL` | Public origin for upload URLs (behind a proxy) | request host |
 
 ## Roadmap
 
@@ -299,7 +322,7 @@ MONGODB_URI_TEST=mongodb://127.0.0.1:27017/feedants_test npm test
 - [x] Expo app: Competition Details screen matching the design, from reusable components
 - [x] Live countdown synced to server time, polled seat counter
 - [x] English / हिंदी toggle
-- [ ] In-app register → pay → upload flow, in-app video player
+- [x] In-app register → pay → upload flow, results, in-app video player, referral deep links
 - [ ] Push-based live seat counter (SSE) instead of polling
 - [ ] Load test: many concurrent users racing for the last seats
 - [ ] Docker Compose for one-command local setup
@@ -315,7 +338,8 @@ MONGODB_URI_TEST=mongodb://127.0.0.1:27017/feedants_test npm test
 - A referral earns the referrer ₹10 when the referred user **pays**, not when they merely start checkout.
 - Paid registrations are not self-cancellable in the app. They go through the refund policy.
 - Auth and video upload storage are outside the scope of this module: a dev phone login stands in for OTP,
-  and submissions take a video URL (a pre-signed upload URL flow would feed it in production).
+  and videos are stored on the API's local disk in development (production would hand out pre-signed
+  S3/GCS upload URLs so video bytes never pass through the API).
 
 **Decisions**
 - **Atomic counter instead of transactions.** Claiming a seat is one conditional `updateOne` on the
