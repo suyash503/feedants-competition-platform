@@ -33,3 +33,5 @@ async function shutdown(signal) {
 }
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+// Graceful stop when run as a child process (signals are unreliable on Windows).
+process.on('message', (msg) => msg === 'shutdown' && shutdown('ipc'));
