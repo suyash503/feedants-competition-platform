@@ -14,7 +14,29 @@ It started as the Feedants full-stack internship assignment ("build the Competit
 real feature, not a static UI"). The goal here is to go further and treat it like a system that has to
 survive **thousands of users hitting "Register" for the last seat at the same moment**.
 
-> **Status:** 🚧 under active development. See the [roadmap](#roadmap).
+**Highlights**
+- **Never oversells.** 1,000 users racing over HTTP for 20 seats gives exactly 20 winners, every time ([load test](#load-test)).
+- **Live.** Seat counts are pushed to every open screen over Server-Sent Events, and countdowns follow the *server's* clock.
+- **The whole flow works.** Reserve a seat, pay (mock Razorpay-style gateway with a hold timer), upload a video with progress, see results.
+- **English / हिंदी**, offline and error states, and a layout that holds up on small phones.
+- **45 automated tests** plus a load test, all in CI, and a **one-command Docker** setup.
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/checkout-pay.png" width="200" alt="Mock payment with live seat-hold timer"><br><sub>Pay with a live seat-hold timer</sub></td>
+    <td align="center"><img src="docs/screenshots/checkout-done.png" width="200" alt="Registration confirmed"><br><sub>Confirmed</sub></td>
+    <td align="center"><img src="docs/screenshots/results.png" width="200" alt="Results with prize money"><br><sub>Results with prize money</sub></td>
+    <td align="center"><img src="docs/screenshots/details-hindi.png" width="200" alt="Hindi"><br><sub>हिंदी, including server content</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/list.png" width="200" alt="Competitions list"><br><sub>Competitions by phase</sub></td>
+    <td align="center"><img src="docs/screenshots/checkout-confirm.png" width="200" alt="Confirm with referral code"><br><sub>Referral code at checkout</sub></td>
+    <td align="center"><img src="docs/screenshots/sold-out.png" width="200" alt="Sold out"><br><sub>Sold out</sub></td>
+    <td align="center"><img src="docs/screenshots/details-full.png" width="200" alt="Full Competition Details screen"><br><sub>The full screen from the design</sub></td>
+  </tr>
+</table>
+
+<sub>Screenshots are captured automatically from the running app (Expo web, headless Chrome) against seeded data.</sub>
 
 ---
 
@@ -43,6 +65,8 @@ flowchart LR
   DB[(MongoDB)]
   UI -- REST / JSON --> R
   S -- atomic updates,<br/>unique indexes --> DB
+  S -- seat changed --> H[Live hub<br/>coalesced]
+  H -- Server-Sent Events --> UI
 ```
 
 ### Data model
@@ -135,7 +159,8 @@ and the app switches on `code`.
 | Method | Path | Auth | What it does |
 |---|---|---|---|
 | `GET` | `/competitions/:idOrSlug` | – | Public details: content, judge, rewards, dates, seats, current phase. Briefly cacheable |
-| `GET` | `/competitions/:idOrSlug/availability` | – | Just seats + phase, cheap to poll for the live counter |
+| `GET` | `/competitions/:idOrSlug/availability` | – | Just seats + phase (polling fallback) |
+| `GET` | `/competitions/:idOrSlug/live` | – | **Server-Sent Events**: an availability snapshot, then one per seat change |
 | `GET` | `/competitions/:idOrSlug/results` | – | Final ranking with prize money (only once results are announced) |
 | `GET` | `/competitions/:idOrSlug/me` | ✓ | This user's registration, submission, **the CTA to show**, referral stats |
 | `POST` | `/competitions/:idOrSlug/registrations` | ✓ | Reserve a seat and get a payment order (confirms instantly if free). Optional `referralCode` |
@@ -171,7 +196,7 @@ The `action.type` returned by `/me` is what the bottom button renders:
 
 ## Testing
 
-43 tests, run in CI against a real MongoDB on Node 22 and 24. Highlights from
+45 tests (11 unit, 34 integration), run in CI against a real MongoDB on Node 22 and 24. Highlights from
 [`concurrency.test.js`](backend/test/concurrency.test.js):
 
 | Scenario | Guarantee checked |
@@ -184,7 +209,38 @@ The `action.type` returned by `/me` is what the bottom button renders:
 
 Plus payment edge cases ([`payments.test.js`](backend/test/payments.test.js)): forged signatures, verifying
 someone else's order, payment arriving after the hold expired (re-seated if possible, otherwise refunded),
-and time-based rules driven by a controllable server clock instead of `sleep`.
+and time-based rules driven by a controllable server clock instead of `sleep`. [`live.test.js`](backend/test/live.test.js)
+checks that the SSE stream pushes seat changes and cleans up subscribers.
+
+CI also builds the **Docker Compose** stack and smoke-tests it (health, seeded data, sign-in, registration,
+restart without reseeding), and typechecks and lints the app.
+
+### Load test
+
+`npm run loadtest` ([`load-test.js`](backend/scripts/load-test.js)) starts the API as its own process,
+races many users for a few seats over real HTTP, has the winners pay, then checks the database.
+
+```bash
+npm run loadtest                                    # 1,000 users, 20 seats
+npm run loadtest -- --users 300 --seats 20 --taps 5 # every user taps "Register" 5× at once
+```
+
+| Scenario | Requests | Result | Invariants |
+|---|---|---|---|
+| 1,000 users, 20 seats | 1,000 | **20 × 201**, 980 × `SOLD_OUT` | ✔ all 6 |
+| 300 users × 5 simultaneous taps, 20 seats | 1,500 | 20 distinct winners (repeat taps got their own hold back), 160 × `REGISTRATION_IN_PROGRESS`, 1,311 × `SOLD_OUT` | ✔ all 6 |
+
+The checks: seats never exceed capacity, the counter equals the registrations holding a seat, exactly N
+distinct winners, every winner paid and was confirmed, one payment per seat, and at most one registration per user.
+
+**Throughput, honestly:** about 180 registrations/s (p50 0.8 s at 200 in flight) on a Windows laptop running
+the load generator, API and MongoDB together. On that machine even an empty `/health` endpoint tops out
+around 1,000 req/s, so the numbers mostly describe the laptop. The test is about correctness under contention.
+Profiling it found two real wins, both now in the code:
+- **JWT verification** parsed the secret as a public key on every request (`jsonwebtoken` does this for
+  string secrets, then falls back), which was ~10% of API CPU. The key is now built once.
+- **Latecomers** ran the full seat-claim sequence just to learn it's sold out. A one-read fast path now
+  rejects them; it can only reject, so seats are still granted solely by the atomic claim.
 
 ## Project structure
 
@@ -197,9 +253,14 @@ backend/
     middleware/    auth, validation, rate limiting, error handling
     models/        Mongoose schemas, indexes, validation
     routes/        HTTP layer (thin)
-    services/      registration, seats, payments, submissions
-  scripts/seed.js  demo data covering every lifecycle state
-  test/            integration + concurrency tests
+    services/      registration, seats, payments, submissions, live availability
+  scripts/
+    seed.js        demo data covering every lifecycle state
+    load-test.js   HTTP race + invariant checks
+  test/            integration, concurrency, payments, uploads, live-stream tests
+  Dockerfile
+docker-compose.yml MongoDB + seed + API
+docs/screenshots/  README images (captured from the running app)
 mobile/
   src/
     app/           Expo Router routes only (thin files)
@@ -208,7 +269,7 @@ mobile/
     features/
       competition/ Competition Details + list screens, one component per section
       profile/     demo user switcher
-    hooks/         server-synced countdown
+    hooks/         server-synced countdown, live seat stream
     i18n/          English / हिंदी strings and language context
     lib/           money/date formatting, server clock, secure storage
     session/       dev sign-in session
@@ -222,7 +283,7 @@ from the API**. Only the app's own UI labels live in the app.
 
 | Concern | How it's handled |
 |---|---|
-| **Three data sources** | `GET /competitions/:slug` (content, cached a minute), `/availability` (seats + phase, polled every 10 s), `/me` (personal state + CTA). The screen shows whichever seats/phase snapshot is newest |
+| **Data sources** | `GET /competitions/:slug` (content, cached a minute), a **live SSE stream** of seats + phase (a pulsing dot shows it's live), `/me` (personal state + CTA). Polling `/availability` is the fallback: every 10 s if the stream is down, every 60 s as a safety net while it's up. The stream closes in the background. The screen shows whichever snapshot is newest |
 | **Countdown** | Ticks every second from a **server-synced clock** (offset measured on every response, latency-corrected). Changing the phone's time doesn't move it. When it hits zero the screen refetches, because the phase just changed |
 | **Bottom CTA** | Renders the server's `action`. `describeAction()` only turns it into words |
 | **States** | Loading skeletons that mirror the layout, offline / error with retry, 404, pull-to-refresh, sold out, upcoming, results, registered, payment pending |
@@ -253,7 +314,17 @@ state can be shown without touching the database.
 
 ## Getting started
 
-### Backend
+### Quick start with Docker
+
+```bash
+docker compose up --build
+curl localhost:4000/api/v1/competitions/classical-dance
+```
+
+This starts MongoDB, loads the demo data (only into an empty database, so restarts keep your data) and runs
+the API as a non-root, health-checked container on port 4000. Then run the mobile app as below.
+
+### Backend without Docker
 
 Requires Node.js 22+ and MongoDB (local or Atlas).
 
@@ -323,9 +394,10 @@ MONGODB_URI_TEST=mongodb://127.0.0.1:27017/feedants_test npm test
 - [x] Live countdown synced to server time, polled seat counter
 - [x] English / हिंदी toggle
 - [x] In-app register → pay → upload flow, results, in-app video player, referral deep links
-- [ ] Push-based live seat counter (SSE) instead of polling
-- [ ] Load test: many concurrent users racing for the last seats
-- [ ] Docker Compose for one-command local setup
+- [x] Push-based live seat counter (SSE) with polling fallback
+- [x] Load test: many concurrent users racing for the last seats
+- [x] Docker Compose for one-command local setup, smoke-tested in CI
+- [x] Screenshots captured from the running app
 - [ ] Demo video
 
 ## Assumptions, decisions and trade-offs
@@ -361,7 +433,8 @@ MONGODB_URI_TEST=mongodb://127.0.0.1:27017/feedants_test npm test
   into buckets or fronted by a Redis queue.
 - The expired-hold sweeper polls every 30 s, so an abandoned seat can look taken for up to a
   hold length + 30 s. A TTL-driven queue would tighten that.
-- The rate limiter's store is in memory, which is fine on one instance but needs Redis behind a load balancer.
+- The rate limiter's store and the live-update hub are in memory, which is fine on one instance. Behind a load
+  balancer both need Redis (a shared rate-limit store, and pub/sub to relay "seats changed" to every instance).
 
 **What I'd add for production:** real OTP auth, Razorpay with webhooks (for payments whose verify call
 never arrives), pre-signed S3/GCS video uploads with transcoding, Redis for caching and rate limits,
