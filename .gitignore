@@ -4,3 +4,9 @@ node_modules/
 dist/
 *.log
 uploads/
+
+# Third-party audio bundled by the /brag skill (not ours to redistribute)
+brag-output/composition/assets/music/
+brag-output/composition/assets/sfx/
+brag-output/composition/renders/
+brag-output/composition/node_modules/

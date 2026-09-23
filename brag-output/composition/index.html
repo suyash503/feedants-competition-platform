@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      /* Palette lifted from the app's own design tokens (mobile/src/theme/index.ts). */
+      :root {
+        --teal-deep: #0b3a3d;
+        --primary: #0f5d63;
+        --primary-text: #0e6d6f;
+        --tint: #e6f2f1;
+        --ink: #1a2427;
+        --muted: #6a7479;
+        --gold: #ffc53d;
+        --mint: #7fe3c6;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #ffffff;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        font-family: Outfit, ui-sans-serif, system-ui, sans-serif;
+        color: var(--ink);
+      }
+      .clip {
+        position: absolute;
+        inset: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+      }
+      .teal {
+        background: radial-gradient(120% 120% at 20% 10%, #12525a 0%, var(--teal-deep) 60%);
+        color: #ffffff;
+      }
+      .white {
+        background: #ffffff;
+      }
+      .pad {
+        padding: 110px 140px;
+      }
+
+      /* Scene 1 — the claim */
+      .claim {
+        font-size: 150px;
+        font-weight: 600;
+        letter-spacing: -0.035em;
+        line-height: 1.04;
+      }
+      .claim .dim {
+        color: #c7e9e5;
+      }
+      .claim .pay {
+        color: var(--mint);
+      }
+      .kicker {
+        font-size: 30px;
+        font-weight: 500;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: #b9e2de;
+      }
+
+      /* Phone frame holding a real screenshot */
+      .phone {
+        position: absolute;
+        width: 430px;
+        height: 880px;
+        border-radius: 46px;
+        background: #ffffff;
+        border: 12px solid #16343a;
+        box-shadow: 0 40px 90px rgba(9, 42, 45, 0.28);
+        overflow: hidden;
+      }
+      .phone img {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        display: block;
+      }
+
+      .h1 {
+        font-size: 82px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+        line-height: 1.06;
+      }
+      .sub {
+        font-size: 36px;
+        font-weight: 400;
+        color: var(--muted);
+        line-height: 1.35;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 14px;
+        background: var(--tint);
+        color: var(--primary-text);
+        border-radius: 14px;
+        padding: 16px 26px;
+        font-size: 30px;
+        font-weight: 500;
+      }
+      .chip::before {
+        content: '';
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--primary-text);
+      }
+
+      /* Scene 3 — the race */
+      .counter {
+        font-size: 180px;
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        font-variant-numeric: tabular-nums;
+      }
+      .bar {
+        width: 900px;
+        height: 22px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.18);
+        overflow: hidden;
+      }
+      .bar span {
+        display: block;
+        height: 100%;
+        width: 5%;
+        border-radius: 999px;
+        background: var(--mint);
+      }
+      .stamp {
+        position: absolute;
+        right: 170px;
+        top: 620px;
+        border: 8px solid var(--gold);
+        color: var(--gold);
+        font-size: 74px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        padding: 18px 42px;
+        border-radius: 18px;
+        transform: rotate(-8deg);
+      }
+      .row {
+        display: flex;
+        align-items: baseline;
+        gap: 26px;
+        font-size: 44px;
+        font-weight: 500;
+      }
+      .row b {
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        min-width: 150px;
+        text-align: right;
+      }
+      .row .code {
+        font-family: monospace;
+        font-size: 38px;
+        color: #c7e9e5;
+      }
+
+      .caption {
+        font-size: 28px;
+        font-weight: 500;
+        color: var(--muted);
+        text-align: center;
+      }
+      .wordmark {
+        font-size: 96px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+      }
+      .url {
+        font-family: monospace;
+        font-size: 30px;
+        color: #bfe4e1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="21" data-width="1920" data-height="1080">
+      <!-- Scene 1 — the claim (0 → 5.3) -->
+      <section id="s1" class="clip teal pad" data-start="0" data-duration="5.3" data-track-index="0">
+        <div style="display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 34px">
+          <div class="kicker" id="s1-kicker">Load test · every run</div>
+          <div class="claim">
+            <div id="s1-a" class="dim">1,000 users.</div>
+            <div id="s1-b" class="dim">20 seats.</div>
+            <div id="s1-c" class="pay">0 oversold.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 2 — the product (5.3 → 10.6) -->
+      <section id="s2" class="clip white" data-start="5.3" data-duration="5.3" data-track-index="0">
+        <div class="phone" id="s2-phone" style="left: 200px; top: 100px">
+          <img id="s2-shot" src="assets/img/details-full.png" alt="Competition details screen" />
+        </div>
+        <div style="position: absolute; left: 800px; top: 250px; width: 900px">
+          <div class="h1" id="s2-title">Feedants<br />Competition Platform</div>
+          <div class="sub" id="s2-sub" style="margin-top: 28px">
+            Paid competitions, end to end — Expo · Node · MongoDB
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 18px; align-items: flex-start; margin-top: 46px">
+            <div class="chip" id="s2-c1">Seats held while you pay</div>
+            <div class="chip" id="s2-c2">Every action decided by the server</div>
+            <div class="chip" id="s2-c3">English / हिंदी</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Scene 3 — the race (10.6 → 15.3) -->
+      <section id="s3" class="clip teal pad" data-start="10.6" data-duration="4.7" data-track-index="0">
+        <div style="display: flex; flex-direction: column; justify-content: center; height: 100%; gap: 30px">
+          <div class="kicker">1,000 users hit Register at once</div>
+          <div class="counter"><span id="s3-count">1</span> / 20 Booked</div>
+          <div class="bar"><span id="s3-bar"></span></div>
+          <div style="display: flex; flex-direction: column; gap: 16px; margin-top: 26px">
+            <div class="row" id="s3-r1"><b>20</b><span class="code">201</span><span>seats granted</span></div>
+            <div class="row" id="s3-r2"><b>980</b><span class="code">409 SOLD_OUT</span><span>turned away</span></div>
+            <div class="row" id="s3-r3" style="color: var(--gold)"><b>0</b><span>oversold — every run</span></div>
+          </div>
+        </div>
+        <div class="stamp" id="s3-stamp">SOLD OUT</div>
+      </section>
+
+      <!-- Scene 4 — the flow (15.3 → 18.5) -->
+      <section id="s4" class="clip white" data-start="15.3" data-duration="3.2" data-track-index="0">
+        <div id="s4-1" style="position: absolute; left: 190px; top: 90px; text-align: center">
+          <div class="phone" style="position: relative; left: 0; top: 0; height: 820px">
+            <img src="assets/img/checkout-pay.png" alt="Mock payment with seat-hold timer" />
+          </div>
+          <div class="caption" style="margin-top: 22px">Seat held for 09:59</div>
+        </div>
+        <div id="s4-2" style="position: absolute; left: 745px; top: 90px; text-align: center">
+          <div class="phone" style="position: relative; left: 0; top: 0; height: 820px">
+            <img src="assets/img/results.png" alt="Results with prize money" />
+          </div>
+          <div class="caption" style="margin-top: 22px">Results &amp; prize money</div>
+        </div>
+        <div id="s4-3" style="position: absolute; left: 1300px; top: 90px; text-align: center">
+          <div class="phone" style="position: relative; left: 0; top: 0; height: 820px">
+            <img src="assets/img/details-hindi.png" alt="The same screen in Hindi" />
+          </div>
+          <div class="caption" style="margin-top: 22px">वही स्क्रीन, हिंदी में</div>
+        </div>
+      </section>
+
+      <!-- Scene 5 — wordmark (18.5 → 21) -->
+      <section id="s5" class="clip teal" data-start="18.5" data-duration="2.5" data-track-index="0">
+        <div
+          style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 26px"
+        >
+          <div class="wordmark" id="s5-mark">Feedants Competition Platform</div>
+          <div id="s5-line" style="font-size: 44px; font-weight: 500; color: var(--mint)">
+            Never oversells a seat.
+          </div>
+          <div class="url" id="s5-url">github.com/suyash503/feedants-competition-platform</div>
+        </div>
+      </section>
+
+      <!-- Audio: warm bed + sparse, motion-matched accents -->
+      <audio
+        id="music"
+        class="clip"
+        data-start="0"
+        data-duration="21"
+        data-volume="0.32"
+        data-fade-out="1.4"
+        data-track-index="1"
+        src="assets/music/happy-beats-business-moves-vol-9-by-ende-dot-app.mp3"
+      ></audio>
+      <!-- beat-locked: 3.70s strong cue -->
+      <audio id="sfx-01" data-start="3.7" data-duration="0.6" data-volume="0.55" data-track-index="2" src="assets/sfx/impactSoft_medium_001.ogg"></audio>
+      <!-- beat-locked: 5.28s strong cue -->
+      <audio id="sfx-02" data-start="5.3" data-duration="0.6" data-volume="0.4" data-track-index="2" src="assets/sfx/bong_001.ogg"></audio>
+      <!-- beat-grid: rows at 11.60s, 12.65s, 13.70s -->
+      <audio id="sfx-03" data-start="11.6" data-duration="0.3" data-volume="0.35" data-track-index="2" src="assets/sfx/click_003.ogg"></audio>
+      <audio id="sfx-04" data-start="12.65" data-duration="0.3" data-volume="0.35" data-track-index="2" src="assets/sfx/click_003.ogg"></audio>
+      <audio id="sfx-05" data-start="13.7" data-duration="0.3" data-volume="0.45" data-track-index="2" src="assets/sfx/click_003.ogg"></audio>
+      <!-- beat-grid: product screens at 15.28s, 16.34s, 17.38s -->
+      <audio id="sfx-06" data-start="15.3" data-duration="0.3" data-volume="0.3" data-track-index="2" src="assets/sfx/click_003.ogg"></audio>
+      <audio id="sfx-07" data-start="16.34" data-duration="0.3" data-volume="0.3" data-track-index="2" src="assets/sfx/click_003.ogg"></audio>
+      <audio id="sfx-08" data-start="17.38" data-duration="0.3" data-volume="0.3" data-track-index="2" src="assets/sfx/click_003.ogg"></audio>
+      <!-- wordmark -->
+      <audio id="sfx-09" data-start="18.6" data-duration="0.8" data-volume="0.45" data-track-index="2" src="assets/sfx/impactSoft_medium_001.ogg"></audio>
+    </div>
+
+    <script>
+      // One paused root timeline; the runtime seeks it. Times are absolute seconds.
+      const tl = gsap.timeline({ paused: true });
+      const rise = { opacity: 0, y: 46 };
+      const settled = { opacity: 1, y: 0, ease: 'power3.out' };
+
+      // --- Scene 1: the claim -------------------------------------------------
+      tl.fromTo('#s1-kicker', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.out' }, 0.5);
+      tl.fromTo('#s1-a', rise, { ...settled, duration: 0.5 }, 1.07); // beat
+      tl.fromTo('#s1-b', rise, { ...settled, duration: 0.5 }, 2.12); // beat
+      // beat-locked: 3.70s strong cue — the payoff line slams in and holds 1.6s
+      tl.fromTo('#s1-c', { opacity: 0, y: 60, scale: 0.94 }, { opacity: 1, y: 0, scale: 1, duration: 0.42, ease: 'back.out(1.7)' }, 3.7);
+      tl.to('#s1', { opacity: 0, duration: 0.3, ease: 'power1.in' }, 5.0);
+
+      // --- Scene 2: the product ----------------------------------------------
+      // beat-locked: 5.28s strong cue — the real screen rises into frame
+      tl.fromTo('#s2-phone', { opacity: 0, y: 120 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }, 5.3);
+      // Slow scroll of the captured screen, so the product reads as alive.
+      tl.fromTo('#s2-shot', { y: 0 }, { y: -560, duration: 4.2, ease: 'none' }, 5.9);
+      tl.fromTo('#s2-title', rise, { ...settled, duration: 0.55 }, 5.8);
+      tl.fromTo('#s2-sub', rise, { ...settled, duration: 0.5 }, 6.34); // strong cue
+      // beat-grid: chips on every other beat (7.40, 8.44, 9.50) — readable spacing
+      tl.fromTo('#s2-c1', { opacity: 0, x: -26 }, { opacity: 1, x: 0, duration: 0.4, ease: 'power2.out' }, 7.4);
+      tl.fromTo('#s2-c2', { opacity: 0, x: -26 }, { opacity: 1, x: 0, duration: 0.4, ease: 'power2.out' }, 8.44);
+      tl.fromTo('#s2-c3', { opacity: 0, x: -26 }, { opacity: 1, x: 0, duration: 0.4, ease: 'power2.out' }, 9.5);
+      tl.to('#s2', { opacity: 0, duration: 0.3, ease: 'power1.in' }, 10.3);
+
+      // --- Scene 3: the race --------------------------------------------------
+      // beat-locked: 10.54s strong cue — the counter starts running
+      const seats = { n: 1 };
+      tl.to(
+        seats,
+        {
+          n: 20,
+          duration: 1.5,
+          ease: 'power2.inOut',
+          onUpdate: () => {
+            document.getElementById('s3-count').textContent = String(Math.round(seats.n));
+          },
+        },
+        10.6,
+      );
+      tl.fromTo('#s3-bar', { width: '5%' }, { width: '100%', duration: 1.5, ease: 'power2.inOut' }, 10.6);
+      tl.fromTo('#s3-stamp', { opacity: 0, scale: 1.5, rotation: -18 }, { opacity: 1, scale: 1, rotation: -8, duration: 0.45, ease: 'back.out(2)' }, 12.1);
+      // beat-grid: rows at 11.60s, 12.65s, 13.70s (every other beat, readable)
+      tl.fromTo('#s3-r1', rise, { ...settled, duration: 0.4 }, 11.6);
+      tl.fromTo('#s3-r2', rise, { ...settled, duration: 0.4 }, 12.65);
+      tl.fromTo('#s3-r3', { opacity: 0, y: 46, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: 'back.out(1.6)' }, 13.7);
+      tl.to('#s3', { opacity: 0, duration: 0.3, ease: 'power1.in' }, 15.0);
+
+      // --- Scene 4: the flow --------------------------------------------------
+      // beat-grid: 15.28s, 16.34s, 17.38s — one screen per other beat, all held together
+      tl.fromTo('#s4-1', { opacity: 0, y: 90 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 15.3);
+      tl.fromTo('#s4-2', { opacity: 0, y: 90 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 16.34);
+      tl.fromTo('#s4-3', { opacity: 0, y: 90 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 17.38);
+      tl.to('#s4', { opacity: 0, duration: 0.3, ease: 'power1.in' }, 18.2);
+
+      // --- Scene 5: wordmark --------------------------------------------------
+      tl.fromTo('#s5-mark', { opacity: 0, y: 34 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 18.6);
+      tl.fromTo('#s5-line', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.out' }, 19.1);
+      tl.fromTo('#s5-url', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.out' }, 19.25);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines['main'] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+Built a paid talent-competition platform where 1,000 people can race for 20 seats and exactly 20 get in.
+
+Expo + Node + MongoDB. Seats are claimed with one atomic, guarded update and held while you pay, so the
+last seat can never be sold twice — and there's a load test in the repo that proves it on every run.
+
+github.com/suyash503/feedants-competition-platform
+
+---
+Alt (shorter, for X):
+1,000 users. 20 seats. 0 oversold — every run.
+A paid competition platform in Expo + Node + MongoDB, with the load test to prove it.
+github.com/suyash503/feedants-competition-platform
+
+---
+Credits: music "Happy Beats / Business Moves" by ende.app · SFX by Kenney · video composed with
+Hyperframes via the /brag skill.

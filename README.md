@@ -38,6 +38,8 @@ survive **thousands of users hitting "Register" for the last seat at the same mo
 
 **▶ [Watch the 48-second demo](docs/demo/feedants-demo.mp4)** — list → details → हिंदी → register → declined payment → pay → upload → live seat counter → results.
 
+**▶ [21-second launch video](brag-output/brag.mp4)** — made with the [/brag](https://github.com/latent-spaces/brag) skill (Hyperframes), rendered locally from the real screenshots and load-test numbers.
+
 <sub>The demo and screenshots are captured automatically from the running app (Expo web, headless Chrome) against seeded data.</sub>
 
 ---
