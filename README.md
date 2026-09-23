@@ -36,7 +36,9 @@ survive **thousands of users hitting "Register" for the last seat at the same mo
   </tr>
 </table>
 
-<sub>Screenshots are captured automatically from the running app (Expo web, headless Chrome) against seeded data.</sub>
+**▶ [Watch the 48-second demo](docs/demo/feedants-demo.mp4)** — list → details → हिंदी → register → declined payment → pay → upload → live seat counter → results.
+
+<sub>The demo and screenshots are captured automatically from the running app (Expo web, headless Chrome) against seeded data.</sub>
 
 ---
 
@@ -398,7 +400,7 @@ MONGODB_URI_TEST=mongodb://127.0.0.1:27017/feedants_test npm test
 - [x] Load test: many concurrent users racing for the last seats
 - [x] Docker Compose for one-command local setup, smoke-tested in CI
 - [x] Screenshots captured from the running app
-- [ ] Demo video
+- [x] Demo video: [docs/demo/feedants-demo.mp4](docs/demo/feedants-demo.mp4)
 
 ## Assumptions, decisions and trade-offs
 
